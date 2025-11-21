@@ -1,0 +1,56 @@
+! NOTES:
+! for laura: i organized it so that siu is lowercase and SIB is upper, for readability
+		! PCENTERED MEAN = a suffix of "_c" denotes person-centered means
+		! TIMEPOINTS = time is represented according to the numerical value in the variable name (e.g., siu_bin0 is at time 0)
+		! VARIABLE TYPE = the type of variable is represented through "int" (intensity), "bin" (binary), or "count"
+		! siu = self-injurious urges
+		! SIB = self-injurious behavior
+		! NA = negative affect
+		! PA = positive affect
+TITLE: Official DSEM Mediation Model for Negative Affect
+DATA: FILE = subset.dat;
+      LISTWISE = ON;
+VARIABLE:
+    MISSING ARE ALL(999);
+    USEVARIABLES = ID ! ID
+    		NA_int0_c NA_int1_c		! affect variables
+    		siu_int0_c siu_int1_c	! urge variables
+    		SIB_bin0 SIB_bin1 SIB_bin2; 	! SIB variables
+    NAMES = ID
+    	obs_num obs_total
+    	day_num day_total
+    	siu_count0 siu_count1
+   	siu_int0_c siu_int1_c
+    	siu_bin0 siu_bin1
+    	SIB_bin0 SIB_bin1
+    	SIB_bin2
+    	SIB_count0 SIB_count2
+    	NA_int0_c PA_int0_c 
+    	NA_int1_c PA_int1_c;
+    	!siu_int0 siu_int1 
+    	!NA_int0 PA_int0 
+    	!NA_int1 PA_int1;
+    CLUSTER = ID;
+    WITHIN = NA_int0_c NA_int1_c siu_int0_c siu_int1_c SIB_bin0 SIB_bin1 SIB_bin2;
+    BETWEEN = ;
+    CATEGORICAL = SIB_bin2;
+ANALYSIS:  
+  TYPE = TWOLEVEL RANDOM;  
+  LINK = LOGIT;  ! If you want logit instead of probit
+MODEL:
+  %WITHIN%
+    siu_int1_c ON NA_int0_c (a1);    ! Fixed effect of SIU_int1 on NA_int0
+    SIB_bin2 ON siu_int1_c (b1);   ! Fixed effect of SIB_bin2 on SIU_int1
+    SIB_bin2 ON NA_int0_c (cdash); ! Direct effect of NA_int0 on SIB_bin2
+  %BETWEEN%
+    ;  		    ! Intercept variance for between-level variance
+
+MODEL CONSTRAINT: ! Use model constraint to calculate indirect and total effect
+   NEW(a1b1 TOTAL);
+   a1b1 = a1*b1;   ! Indirect effect of NA_int0 on SIB_bin2 via mediator (SIU_int1)
+   TOTAL = a1*b1 + cdash;   ! Total effect of X on Y
+   
+OUTPUT: 
+   STANDARDIZED (STDYX);
+   MODINDICES (10);
+ 

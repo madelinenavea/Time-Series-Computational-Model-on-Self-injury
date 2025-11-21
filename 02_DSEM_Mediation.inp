@@ -1,0 +1,68 @@
+! NOTES:
+! for laura: i organized it so that siu is lowercase and SIB is upper, for readability
+		! PCENTERED MEAN = a suffix of "_c" denotes person-centered means
+		! TIMEPOINTS = time is represented according to the numerical value in the variable name (e.g., siu_bin0 is at time 0)
+		! VARIABLE TYPE = the type of variable is represented through "int" (intensity), "bin" (binary), or "count"
+		! siu = self-injurious urges
+		! SIB = self-injurious behavior
+		! NA = negative affect
+		! PA = positive affect
+		
+		
+! Lisa! Could you please double check Laura and I's code
+! Please check for:
+	! Whether the variables (under VARIABLE) have been specified correctly (i.e., corresponding to their correct locations under the MODEL section)
+	! Between-level random intercepts for predictor variables per person (siu_int1_c, NA_int0_c) 
+		!(When we try to run the model, it says "One or more between-level variables have variation within a cluster for
+  		! one or more clusters.  Check your data and format statement."
+	! Within person time-varying relationships between NA_int0_c (predictor), siu_int1_c (mediator), and sib t2 (outcome) (i.e., whether mediation is calculated correctly in our model constraint)
+	! Did we do the autoregressive paths correctly
+TITLE: DSEM mediation (short names) ;
+DATA: FILE = prepped_data.dat;  ! <-- put full path or file in Mplus working directory
+      LISTWISE = ON;
+VARIABLE:
+  MISSING ARE ALL (999);
+  NAMES = ID obs_num obs_total day_num day_total
+          siu_count0 siu_count1 siu_int0 siu_int1 siu_bin0 siu_bin1
+          SIB_bin0 SIB_bin1 SIB_bin2 SIB_count0 SIB_count2
+          NA0_c PA0_c NA1_c PA1_c;
+  USEVARIABLES = ID NA0_c NA1_c PA0_c PA1_c siu_int0 siu_int1 SIB_bin0 SIB_bin1 SIB_bin2;
+  CLUSTER = ID;
+  WITHIN = NA0_c NA1_c PA0_c PA1_c siu_int0 siu_int1 SIB_bin0 SIB_bin1 SIB_bin2;
+  BETWEEN = ;  ! keep empty if you don't have person-level (cluster) predictors
+  CATEGORICAL = SIB_bin2;
+
+ANALYSIS:
+  TYPE = TWOLEVEL RANDOM;
+  !RANDOM = siu1_c NA1_c NA0_c;  ! declare random intercepts/slopes you want estimated
+  LINK = LOGIT;
+  ESTIMATOR = ML;
+
+MODEL:
+  %WITHIN%
+    ! autoregressive within-person
+    NA1_c  ON NA0_c;
+    PA1_c  ON PA0_c;
+    siu_int1 ON siu_int0;
+    SIB_bin2  ON SIB_bin1 SIB_bin0;
+    SIB_bin1  ON SIB_bin0;
+
+    ! lagged mediation paths (within-person)
+    siu_int1 ON NA0_c (a1);
+    siu_int1 ON PA0_c (x1);
+    SIB_bin2  ON siu_int1 (b1);
+    SIB_bin2  ON NA0_c (cdash);
+    SIB_bin2  ON PA0_c (zdash);
+
+  %BETWEEN%
+
+MODEL CONSTRAINT:
+  NEW(a1b1 TOTAL x1b1 TOTAL_PA);
+  a1b1 = a1 * b1;
+  TOTAL = a1 * b1 + cdash;
+  x1b1 = x1 * b1;
+  TOTAL_PA = x1 * b1 + zdash;
+
+OUTPUT:
+  STANDARDIZED (STDYX);
+  MODINDICES (10);
